@@ -14,6 +14,15 @@ defmodule SkipGraph do
 
   defstruct head: nil, max_level: 0, size: 0
 
+  @type comparable :: integer | float | atom | binary
+
+  defmacro is_comparable(x) do
+    quote do
+      is_integer(unquote(x)) or is_float(unquote(x)) or is_atom(unquote(x)) or
+        is_binary(unquote(x))
+    end
+  end
+
   @doc """
   Creates a new skip-graph with a given max depth.
   """
@@ -29,9 +38,9 @@ defmodule SkipGraph do
   - Updates neighbor links.
   - Uses weight_fn (if provided) to determine edge weights.
   """
-  @spec insert(t(), term(), term(), (term(), term() -> number())) :: t()
-  def insert(graph, key, value, weight_fn \\ fn _a, _b -> 1 end) do
-    level = biased_random_level(graph.max_level)
+  @spec insert(t(), comparable(), term(), (term(), term() -> number())) :: t()
+  def insert(graph, key, value, weight_fn \\ fn _a, _b -> 1 end) when is_comparable(key) do
+    level = random_log_level(graph.max_level)
     new_node = Node.new(key, value, level)
 
     {graph, _} = insert_node(graph, new_node, graph.max_level, weight_fn)
@@ -168,10 +177,10 @@ defmodule SkipGraph do
   @doc """
   Generates a random level for a new node, following a power-law distribution.
   """
-  @spec biased_random_level(non_neg_integer()) :: non_neg_integer()
-  def biased_random_level(max_level, level \\ 0) do
+  @spec random_log_level(non_neg_integer()) :: non_neg_integer()
+  def random_log_level(max_level, level \\ 0) do
     if :rand.uniform() < 0.5 and level < max_level do
-      biased_random_level(max_level, level + 1)
+      random_log_level(max_level, level + 1)
     else
       level
     end
